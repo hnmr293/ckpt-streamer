@@ -78,12 +78,21 @@ if __name__ == "__main__":
             raise RuntimeError(f"Unknown test: {sys.argv[1]}")
     else:
         import subprocess
+        from locale import getpreferredencoding
 
         a1 = subprocess.run([sys.executable, __file__, "test1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         a2 = subprocess.run([sys.executable, __file__, "test2"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        a1.check_returncode()
-        a2.check_returncode()
+        error = False
+        if a1.returncode != 0:
+            error = True
+            print(a1.stderr.decode(getpreferredencoding()))
+        if a2.returncode != 0:
+            error = True
+            print(a2.stderr.decode(getpreferredencoding()))
+
+        if error:
+            raise RuntimeError("Test failed")
 
         a1 = [line for line in a1.stdout.decode().strip().split("\n") if line.startswith("RSS: ")]
         a2 = [line for line in a2.stdout.decode().strip().split("\n") if line.startswith("RSS: ")]

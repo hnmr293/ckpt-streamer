@@ -45,7 +45,6 @@ def run_test():
 
         gc.collect()
 
-        # rss0 = _memory.current_rss()
         rss0 = 0
         with _memory.show_rss(0.1, rss0):
             sd = torch.load(f_, map_location="cpu", weights_only=True, mmap=True)
@@ -109,7 +108,7 @@ if __name__ == "__main__":
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
-        for i, lines in enumerate([a1, a2], start=1):
+        for idx, lines in enumerate([a1, a2]):
             xs = []
             ys = []
             for line in lines:
@@ -121,7 +120,7 @@ if __name__ == "__main__":
                 ys.append(v)
             xs = [x - xs[0] for x in xs]
             ys = [(y - ys[0]) / 1024 for y in ys]
-            ax.plot(xs, ys, label=f"test{i}")
+            ax.plot(xs, ys, label=["w/o ckpt_streamer", "w/ ckpt_streamer"][idx])
         ax.set_xlabel("time (s)")
         ax.set_ylabel("Process RSS (MiB)")
         ax.legend()

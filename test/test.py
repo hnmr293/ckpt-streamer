@@ -16,12 +16,13 @@ TiB = 1024**4
 
 @contextmanager
 def temp_file():
-    file = tempfile.mkstemp()[1]
+    fd, file = tempfile.mkstemp()
     with open(file, "wb") as f:
         pass
     try:
         yield file
     finally:
+        os.close(fd)
         os.unlink(file)
 
 

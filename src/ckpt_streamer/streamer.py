@@ -63,7 +63,7 @@ def stream(
     obj: Mapping[str, Any],
     memory_limit_mb: int = 1024,
     cpu_page_size: int = 4096,
-):
+) -> Iterator[StreamValue]:
     # sort tensors by their pointer
     all_tensors = sorted(_retrieve_all_tensors(obj, None, None), key=lambda x: x.ptr)
 

@@ -21,8 +21,7 @@ $ uv add git+https://github.com/hnmr293/ckpt-streamer
 ```
 
 ## Usage
-
-Typical PyTorch ckpt loading with mmap is:
+Typically, PyTorch's `ckpt` file is loaded with `mmap = True` like this:
 
 ```python
 import torch
@@ -49,7 +48,7 @@ In this case, physical memory usage of `state_dict` will **not exceed 1GiB**.
 
 ```python
 ckpt_streamer.stream(
-    obj: Mapping[str, Any],
+    state_dict: Mapping[str, Any],
     memory_limit_mb: int = 1024,
     cpu_page_size: int = 4096,
 ) -> Iterator[tuple[Any, Any, torch.Tensor]]
@@ -60,6 +59,8 @@ The core API is the function `stream`. It yields tuples of `(obj, key, val)`, wh
 Typically, `obj` is a `dict[str, torch.Tensor]`, and `key` is a `str`.
 
 The order of yielded tensors follows the *backing storage* order, which differs from standard Python dictionary ordering.
+
+`state_dict` specifies your checkpoint dictionary. The `ckpt` file should be loaded with `mmap = True` and all tensors must be on the CPU.
 
 `memory_limit_mb` specifies the maximum amount of tensor data allowed to remain in physical memory, measured in MiB. For example, if you set `memory_limit_mb = 1024` (1GiB), tensor data will be automatically purged from physical memory when total usage exceeds this 1GiB limit. This allows processing of checkpoints much larger than available RAM.
 

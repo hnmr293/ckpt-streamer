@@ -80,19 +80,28 @@ if __name__ == "__main__":
         import subprocess
         from locale import getpreferredencoding
 
+        encoding = getpreferredencoding()
+
         a1 = subprocess.run([sys.executable, __file__, "test1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         a2 = subprocess.run([sys.executable, __file__, "test2"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         error = False
         if a1.returncode != 0:
             error = True
-            print(a1.stderr.decode(getpreferredencoding()))
+            print(a1.stderr.decode(encoding))
         if a2.returncode != 0:
             error = True
-            print(a2.stderr.decode(getpreferredencoding()))
+            print(a2.stderr.decode(encoding))
 
         if error:
             raise RuntimeError("Test failed")
+
+        if len(a1.stderr) != 0:
+            print("test1 stderr:")
+            print(a1.stderr.decode(encoding))
+        if len(a2.stderr) != 0:
+            print("test2 stderr:")
+            print(a2.stderr.decode(encoding))
 
         a1 = [line for line in a1.stdout.decode().strip().split("\n") if line.startswith("RSS: ")]
         a2 = [line for line in a2.stdout.decode().strip().split("\n") if line.startswith("RSS: ")]

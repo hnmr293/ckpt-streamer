@@ -1,0 +1,23 @@
+[project]
+name = "ckpt-streamer"
+version = "0.1.0"
+description = "Read huge CKPT files with poor machines"
+readme = "README.md"
+authors = [
+    { name = "hnmr", email = "hnmr293@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.2.4",
+    "torch>=2.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "matplotlib>=3.10.1",
+    "psutil>=7.0.0",
+]

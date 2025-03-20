@@ -4,6 +4,8 @@
 
 ## Installation
 
+Currently only works on POSIX-like system (Linux, macOS and WSL).
+
 With `pip`:
 
 ```bash

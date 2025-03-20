@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 
 
 def main():
-    csv_path = os.path.dirname(__file__) + "/perf.csv"
+    csv_path = os.path.dirname(__file__) + "/perf2.csv"
     df = pd.read_csv(csv_path, header=None, names=["name", "numel", "time"])
 
     stats = df.groupby(["name", "numel"])["time"].agg(["mean", "std", "count"]).reset_index()
@@ -32,12 +32,12 @@ def main():
             )
 
     fig.update_layout(
-        title="Performance",
+        title="Performance Test 2: tensors containing 1024 elements",
         xaxis_title="Number of elements",
         yaxis_title="process time (s)",
     )
 
-    fig.write_image(os.path.dirname(__file__) + "/perf.png")
+    fig.write_image(os.path.dirname(__file__) + "/perf2.png")
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import sys
 import random
 import itertools
 from time import perf_counter
@@ -12,9 +13,10 @@ from utils import temp_file
 
 
 def perf(n: int, fn: Callable[[dict[str, Any]], None]):
-    N = 1024
-    WARM_UP = 5
-    RUN = 100
+    # N = 1024
+    N = n // 1024
+    WARM_UP = 1
+    RUN = 5
 
     with temp_file() as f:
         with open(f, "wb") as f2:
@@ -66,17 +68,19 @@ def main():
         1 << 24,  # 16 MiB
         1 << 26,  # 64 MiB
         1 << 28,  # 256 MiB
-        1 << 30,  # 1 GiB
-        1 << 32,  # 4 GiB
+        # 1 << 30,  # 1 GiB
+        # 1 << 32,  # 4 GiB
     ]
 
     all_tests = list(itertools.product(tests, ns))
     random.shuffle(all_tests)
 
     for (name, fn), n in all_tests:
+        print(name, n, file=sys.stderr)
         results = perf(n, fn)
         for r in results:
             print(f"{name},{n},{r}")
+        sys.stdout.flush()
 
 
 if __name__ == "__main__":

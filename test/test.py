@@ -10,18 +10,17 @@ from utils import temp_file
 
 
 @contextmanager
-def run_test():
-    size = 100 * 1024 * 1024  # 100 MiB
-    N = 128
+def run_test(interval=0.1):
+    size = 4 * 1024 * 1024 * 1024  # 4 GiB
+    N = 1024
 
     with temp_file() as f_:
         with open(f_, "wb") as f:
-            torch.save({f"key{i}": torch.zeros(size // 4 // N, dtype=torch.float32) for i in range(N)}, f)
+            torch.save({f"key{i}": torch.zeros(size // N, dtype=torch.float32) for i in range(N)}, f)
 
         gc.collect()
 
-        rss0 = 0
-        with _memory.show_rss(0.1, rss0):
+        with _memory.show_rss(interval):
             sd = torch.load(f_, map_location="cpu", weights_only=True, mmap=True)
             yield sd
 
@@ -30,14 +29,14 @@ def test1():
     with run_test() as sd:
         for k, v in sd.items():
             v.to(torch.bfloat16)
-            time.sleep(0.1)
+            time.sleep(0.01)
 
 
 def test2():
     with run_test() as sd:
-        for _, k, v in stream(sd, memory_limit_mb=10):
+        for _, k, v in stream(sd, memory_limit_mb=1024):
             v.to(torch.bfloat16)
-            time.sleep(0.1)
+            time.sleep(0.01)
 
 
 if __name__ == "__main__":
@@ -80,10 +79,11 @@ if __name__ == "__main__":
         a1 = [line for line in a1.stdout.decode().strip().split("\n") if line.startswith("RSS: ")]
         a2 = [line for line in a2.stdout.decode().strip().split("\n") if line.startswith("RSS: ")]
 
-        import matplotlib.pyplot as plt
+        import plotly.graph_objects as go
 
-        fig, ax = plt.subplots()
-        for idx, lines in enumerate([a1, a2]):
+        fig = go.Figure()
+
+        for name, lines in [("w/o ckpt_streamer", a1), ("w/ ckpt_streamer", a2)]:
             xs = []
             ys = []
             for line in lines:
@@ -94,9 +94,13 @@ if __name__ == "__main__":
                 xs.append(t)
                 ys.append(v)
             xs = [x - xs[0] for x in xs]
-            ys = [(y - ys[0]) / 1024 for y in ys]
-            ax.plot(xs, ys, label=["w/o ckpt_streamer", "w/ ckpt_streamer"][idx])
-        ax.set_xlabel("time (s)")
-        ax.set_ylabel("Process RSS (MiB)")
-        ax.legend()
-        fig.savefig(os.path.dirname(__file__) + "/test.png")
+            ys = [y / 1024 for y in ys]
+            fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", name=name))
+
+        fig.update_layout(
+            title="Physical Memory Usage",
+            xaxis_title="time (s)",
+            yaxis_title="Process RSS (MiB)",
+        )
+
+        fig.write_image(os.path.dirname(__file__) + "/test.png")

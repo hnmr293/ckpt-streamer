@@ -83,10 +83,10 @@ Tested with a 16GB ckpt file consisting of 1024 tensors, each containing 4,194,3
 
 ### Access Speed
 
-1. Tested with 4MB, 16MB, 64MB, 256MB, 1GB, 4GB, and 16GB ckpt files consisting of 1024 large tensors. In each test, we iterate through all tensors and call `tensor.to(torch.bfloat16)`. Each test was repeated 100 times after 5 warm-up iterations. All tests were repeated 10 times with shuffling.
+1. Tested with 4MB, 16MB, 64MB, 256MB, 1GB, 4GB, and 16GB ckpt files consisting of 1024 large tensors. In each test, we iterate through all tensors and call `tensor.to(torch.bfloat16)`. Each test was repeated 100 times after 5 warm-up iterations. All tests were repeated 10 times with shuffling. Error bars represent standard error.
 
 ![Access speed](test/perf1.png)
 
-2. Tested with 4MB, 16MB, 64MB, 256MB and 1GB ckpt files consisting of many tensors containing 1024 elements. In each test, we iterate through all tensors and call `tensor.to(torch.bfloat16)`. Each test was repeated 5 times after a warm-up iteration. Tests order is shuffled.
+2. Tested with 4MB, 16MB, 64MB, 256MB and 1GB ckpt files consisting of many tensors containing 1024 elements. In each test, we iterate through all tensors and call `tensor.to(torch.bfloat16)`. Each test was repeated 5 times after a warm-up iteration. Tests order is shuffled. Error bars represent standard error.
 
 ![Access speed](test/perf2.png)

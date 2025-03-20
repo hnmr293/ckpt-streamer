@@ -61,6 +61,10 @@ Typically, `obj` is a `dict[str, torch.Tensor]`, and `key` is a `str`.
 
 The order of yielded tensors follows the *backing storage* order, which differs from standard Python dictionary ordering.
 
+`memory_limit_mb` specifies the maximum amount of tensor data allowed to remain in physical memory, measured in MiB. For example, if you set `memory_limit_mb = 1024` (1GiB), tensor data will be automatically purged from physical memory when total usage exceeds this 1GiB limit. This allows processing of checkpoints much larger than available RAM.
+
+`cpu_page_size` specifies the system's memory page size in bytes. This should match your machine's actual page size (typically 4KiB = 4096 on most systems). Setting an incorrect value may cause OOM. You can verify your system's page size with `getconf PAGE_SIZE` on Linux/macOS.
+
 ## Performance
 
 Test environment:

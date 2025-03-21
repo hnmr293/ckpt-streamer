@@ -64,6 +64,18 @@ def stream(
     memory_limit_mb: int = 1024,
     cpu_page_size: int = 4096,
 ) -> Iterator[StreamValue]:
+    """
+    Yields tuples of (parent, key, tensor) from the given state_dict, ensuring that the physical memory usage does not exceed the specified limit.
+
+    Args:
+        obj (Mapping[str, Any]): The checkpoint dictionary containing tensors.
+        memory_limit_mb (int, optional): The maximum amount of tensor data allowed to remain in physical memory, measured in MiB. Defaults to 1024.
+        cpu_page_size (int, optional): The system's memory page size in bytes. Defaults to 4096.
+
+    Yields:
+        Iterator[StreamValue]: Tuples of (parent, key, tensor), where `tensor` is always a torch.Tensor, `parent` is the container of `tensor`, and `key` is the key in `parent` such that `parent[key] == tensor`.
+    """
+
     # sort tensors by their pointer
     all_tensors = sorted(_retrieve_all_tensors(obj, None, None), key=lambda x: x.ptr)
 

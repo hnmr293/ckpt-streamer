@@ -65,6 +65,8 @@ def converter(model, module, tensor):
 apply_state_dict(model, state_dict, converter, strict=True, memory_limit_mb=1024)
 ```
 
+(related to: [PyTorch #75242](https://github.com/pytorch/pytorch/issues/75242))
+
 ## Interfaces
 
 ### `stream()`: state_dict iterator

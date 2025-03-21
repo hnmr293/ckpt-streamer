@@ -36,7 +36,7 @@ With `ckpt_streamer`, replace `state_dict.items()` with `stream(state_dict)`:
 ```python
 import torch
 from ckpt_streamer import stream
-model = torch.load('foo.ckpt')
+model = torch.load('foo.ckpt', map_location='cpu', mmap=True)
 state_dict = model['state_dict']
 for obj, key, val in stream(state_dict, memory_limit_mb=1024):
     ...

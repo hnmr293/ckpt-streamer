@@ -44,6 +44,27 @@ for obj, key, val in stream(state_dict, memory_limit_mb=1024):
 
 In this case, physical memory usage of `state_dict` will **not exceed 1GiB**.
 
+If your weights are saved in `float32` format and you want to use the model in `float16`, you can efficiently load the weights as follows:
+
+```python
+from ckpt_streamer import apply_state_dict
+
+model = ... # your float16 CUDA model
+
+# load weights with mmap (no physical memory consumption)
+state_dict = torch.load('foo-fp32.ckpt', map_location='cpu', mmap=True)
+
+# converter for float32 on CPU to float16 on GPU
+def converter(model, module, tensor):
+    # model: your model
+    # module: sub module containing the tensor
+    # tensor: mmaped tensor
+    return tensor.to(dtype=torch.float16, device='cuda:0')
+
+# apply model weights with streaming fashion
+apply_state_dict(model, state_dict, converter, strict=True, memory_limit_mb=1024)
+```
+
 ## Interfaces
 
 ### `stream()`: state_dict iterator

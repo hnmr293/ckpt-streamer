@@ -44,7 +44,7 @@ for obj, key, val in stream(state_dict, memory_limit_mb=1024):
 
 In this case, physical memory usage of `state_dict` will **not exceed 1GiB**.
 
-## Interface
+## Interfaces
 
 ### `stream()`: state_dict iterator
 
@@ -67,11 +67,32 @@ Typically, `obj` is a `dict[str, torch.Tensor]`, and `key` is a `str`.
 
 The order of yielded tensors follows the *backing storage* order, which differs from standard Python dictionary ordering.
 
-`state_dict` specifies your checkpoint dictionary. The `ckpt` file should be loaded with `mmap = True` and all tensors must be on the CPU.
+### `apply_state_dict`: streaming fashion of `Module.load_state_dict`
 
-`memory_limit_mb` specifies the maximum amount of tensor data allowed to remain in physical memory, measured in MiB. For example, if you set `memory_limit_mb = 1024` (1GiB), tensor data will be automatically purged from physical memory when total usage exceeds this 1GiB limit. This allows processing of checkpoints much larger than available RAM.
+```python
+ckpt_streamer.apply_state_dict(
+    model: torch.nn.Module,
+    state_dict: dict[str, Any],
+    converter: Callable[[torch.nn.Module, torch.nn.Module, torch.Tensor], torch.Tensor] = lambda root_module, current_module, x: x,
+    strict: bool = True,
+    assign: bool = False,
+    memory_limit_mb: int = 1024,
+    cpu_page_size: int = 4096,
+) -> torch.nn.modules.module._IncompatibleKeys
+```
 
-`cpu_page_size` specifies the system's memory page size in bytes. This should match your machine's actual page size (typically 4KiB = 4096 on most systems). Setting an incorrect value may cause OOM. You can verify your system's page size with `getconf PAGE_SIZE` on Linux/macOS.
+`apply_state_dict` is a memory-efficient alternative to `model.load_state_dict()` that loads tensors in a streaming manner, ensuring that the memory usage does not exceed the specified limit.
+
+Parameters:
+- `model`: An instance of `torch.nn.Module`.
+- `state_dict`: A checkpoint dictionary containing tensors.
+- `converter`: A function to convert tensors. By default, it does not convert.
+- `strict`: Whether to strictly enforce that the keys in `state_dict` match the keys returned by `model.state_dict()`. Default is `True`.
+- `assign`: Whether to assign the tensor as a `torch.nn.Parameter`. Default is `False`.
+- `memory_limit_mb`: Memory limit in MiB. Default is `1024`.
+- `cpu_page_size`: System's memory page size in bytes. Default is `4096`.
+
+Returns a `torch.nn.modules.module._IncompatibleKeys` object containing `missing_keys` and `unexpected_keys`.
 
 ## Performance
 

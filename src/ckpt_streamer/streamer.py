@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 import logging
-from typing import Any, Mapping, Iterator, NamedTuple
+from typing import Any, Mapping, Iterator, NamedTuple, Callable
 
 import torch
+from torch.nn.modules.module import _IncompatibleKeys
 
 from .mmap import free_memory
+from .utils import get_module_and_param
 
 
 _logger = logging.getLogger(__name__)
@@ -106,3 +108,88 @@ def stream(
                     )
                     # ignore this region
                     start_ptr = end_ptr
+
+
+def apply_state_dict(
+    model: torch.nn.Module,
+    state_dict: dict[str, Any],
+    converter: Callable[
+        [torch.nn.Module, torch.nn.Module, torch.Tensor], torch.Tensor
+    ] = lambda root_module, current_module, x: x,
+    strict: bool = True,
+    assign: bool = False,
+    memory_limit_mb: int = 1024,
+    cpu_page_size: int = 4096,
+) -> _IncompatibleKeys:
+    """
+    Applies a state_dict to a model in a streaming fashion, ensuring that the memory usage does not exceed the specified limit.
+
+    Args:
+        model (torch.nn.Module): An instance of torch.nn.Module.
+        state_dict (dict[str, Any]): A checkpoint dictionary containing tensors.
+        converter (Callable[[torch.nn.Module, torch.nn.Module, torch.Tensor], torch.Tensor], optional): A function to convert tensors. Defaults to a no-op lambda function.
+        strict (bool, optional): Whether to strictly enforce that the keys in state_dict match the keys returned by model.state_dict(). Defaults to True.
+        assign (bool, optional): Whether to assign the tensor as a torch.nn.Parameter. Defaults to False.
+        memory_limit_mb (int, optional): Memory limit in MiB. Defaults to 1024.
+        cpu_page_size (int, optional): System's memory page size in bytes. Defaults to 4096.
+
+    Returns:
+        _IncompatibleKeys: An object containing missing_keys and unexpected_keys.
+    """
+    missing_keys: set[str] = set(model.state_dict().keys())
+    unexpected_keys: list[str] = []
+    error_msgs: list[str] = []
+
+    for _, input_key, input_tensor in stream(
+        state_dict,
+        memory_limit_mb=memory_limit_mb,
+        cpu_page_size=cpu_page_size,
+    ):
+        try:
+            target_module, target_param_key, target_param = get_module_and_param(model, input_key)
+        except Exception as e:
+            unexpected_keys.append(input_key)
+            error_msgs.append(str(e))
+            continue
+
+        input_tensor = converter(model, target_module, input_tensor)
+
+        if assign:
+            if not isinstance(input_tensor, torch.nn.Parameter):
+                input_tensor = torch.nn.Parameter(
+                    input_tensor,
+                    requires_grad=target_param.requires_grad,
+                )
+            else:
+                input_tensor.requires_grad_(target_param.requires_grad)
+            setattr(target_module, target_param_key, input_tensor)
+        else:
+            target_param.copy_(input_tensor)
+
+        missing_keys.remove(input_key)
+
+    if strict:
+        if len(unexpected_keys) > 0:
+            error_msgs.insert(
+                0,
+                "Unexpected key(s) in state_dict: {}. ".format(
+                    ", ".join(f'"{k}"' for k in unexpected_keys),
+                ),
+            )
+        if len(missing_keys) > 0:
+            error_msgs.insert(
+                0,
+                "Missing key(s) in state_dict: {}. ".format(
+                    ", ".join(f'"{k}"' for k in missing_keys),
+                ),
+            )
+
+    if len(error_msgs) > 0:
+        raise RuntimeError(
+            "Error(s) in loading state_dict for {}:\n\t{}".format(
+                model.__class__.__name__,
+                "\n\t".join(error_msgs),
+            )
+        )
+
+    return _IncompatibleKeys(missing_keys, unexpected_keys)

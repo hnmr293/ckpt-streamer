@@ -1,3 +1,3 @@
-from .streamer import stream
+from .streamer import stream, apply_state_dict
 
-__all__ = ["stream"]
+__all__ = ["stream", "apply_state_dict"]

@@ -85,7 +85,7 @@ ckpt_streamer.apply_state_dict(
 
 Parameters:
 - `model`: An instance of `torch.nn.Module`.
-- `state_dict`: A checkpoint dictionary containing tensors.
+- `state_dict`: A checkpoint dictionary containing tensors. Must be created by `torch.load(..., map_location='cpu', mmap=True)`, or causes SEGV.
 - `converter`: A function to convert tensors. By default, it does not convert.
 - `strict`: Whether to strictly enforce that the keys in `state_dict` match the keys returned by `model.state_dict()`. Default is `True`.
 - `assign`: Whether to assign the tensor as a `torch.nn.Parameter`. Default is `False`.

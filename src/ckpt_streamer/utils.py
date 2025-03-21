@@ -7,8 +7,8 @@ def get_module_and_param(module: torch.nn.Module, key: str) -> tuple[torch.nn.Mo
 
     keys = key.rsplit(".", 1)
 
-    if len(key) != 2:
-        raise ValueError(f"key must be in the form of 'module_name.param_name', but got {key}")
+    if len(keys) != 2:
+        raise ValueError(f"key must be in the form of 'module_name.param_name', but got {key!r}")
 
     mod_key, param_key = keys
 
@@ -19,4 +19,4 @@ def get_module_and_param(module: torch.nn.Module, key: str) -> tuple[torch.nn.Mo
         # TypeError が正しい気がするけど torch.get_submodule に合わせて AttributeError にしておく
         raise AttributeError(f"param must be torch.Tensor, but got {param.__class__}")
 
-    return module, param_key, param
+    return submod, param_key, param

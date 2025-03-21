@@ -2,7 +2,9 @@ import pytest
 import torch
 import torch.nn as nn
 from torch.nn.modules.module import _IncompatibleKeys
+
 from ckpt_streamer import apply_state_dict
+from utils import temp_file
 
 
 class SimpleModel(nn.Module):
@@ -36,15 +38,27 @@ def test_apply_state_dict_basic():
     source_model = SimpleModel()
     source_state_dict = source_model.state_dict()
 
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": source_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        source_state_dict = loaded["state_dict"]
+
     # Create a target model with different parameter values
     target_model = SimpleModel()
+
+    # Ensure that source and target models are different
+    with torch.no_grad():
+        for param in target_model.parameters():
+            param.data = torch.randn_like(param.data)
 
     # Check that models have different parameters initially
     for (source_k, source_v), (target_k, target_v) in zip(
         source_model.state_dict().items(), target_model.state_dict().items()
     ):
         assert source_k == target_k
-        assert not torch.allclose(source_v, target_v)
+        # For small values, they might completely match, so set wider tolerance
+        assert not torch.allclose(source_v, target_v, rtol=1e-3, atol=1e-3)
 
     # Apply state dict
     result = apply_state_dict(target_model, source_state_dict)
@@ -67,7 +81,18 @@ def test_apply_state_dict_with_converter():
     source_model = SimpleModel()
     source_state_dict = source_model.state_dict()
 
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": source_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        source_state_dict = loaded["state_dict"]
+
     target_model = SimpleModel()
+
+    # Explicitly change model parameters
+    with torch.no_grad():
+        for param in target_model.parameters():
+            param.data = torch.randn_like(param.data)
 
     # Define a converter that scales all tensors by 2.0
     def scale_converter(root_module, current_module, tensor):
@@ -88,6 +113,12 @@ def test_apply_state_dict_assign_mode():
     """Test apply_state_dict with assign=True, replacing parameters instead of copying."""
     source_model = SimpleModel()
     source_state_dict = source_model.state_dict()
+
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": source_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        source_state_dict = loaded["state_dict"]
 
     target_model = SimpleModel()
 
@@ -115,6 +146,12 @@ def test_apply_state_dict_missing_keys():
     # Remove a key to create missing key scenario
     partial_state_dict = {k: v for k, v in source_state_dict.items() if "linear2" not in k}
 
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": partial_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        partial_state_dict = loaded["state_dict"]
+
     target_model = SimpleModel()
 
     # Apply partial state dict with strict=False
@@ -140,6 +177,12 @@ def test_apply_state_dict_unexpected_keys():
     extra_state_dict = source_state_dict.copy()
     extra_state_dict["extra.weight"] = torch.randn(5, 5)
 
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": extra_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        extra_state_dict = loaded["state_dict"]
+
     target_model = SimpleModel()
 
     # Apply with strict=False
@@ -160,7 +203,18 @@ def test_apply_state_dict_nested_model():
     source_model = ModelWithNesting()
     source_state_dict = source_model.state_dict()
 
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": source_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        source_state_dict = loaded["state_dict"]
+
     target_model = ModelWithNesting()
+
+    # Explicitly change model parameters
+    with torch.no_grad():
+        for param in target_model.parameters():
+            param.data = torch.randn_like(param.data)
 
     # Apply state dict
     result = apply_state_dict(target_model, source_state_dict)
@@ -181,7 +235,29 @@ def test_apply_state_dict_memory_limits():
     source_model = SimpleModel()
     source_state_dict = source_model.state_dict()
 
+    # Save to a temporary file and load with mmap=True
+    with temp_file() as tmp:
+        torch.save({"state_dict": source_state_dict}, tmp)
+        loaded = torch.load(tmp, map_location="cpu", mmap=True)
+        source_state_dict = loaded["state_dict"]
+
     target_model = SimpleModel()
+
+    # Explicitly change model parameters
+    with torch.no_grad():
+        for param in target_model.parameters():
+            param.data = torch.randn_like(param.data)
 
     # Test with very small memory limit (should still work but might log warnings)
     result = apply_state_dict(target_model, source_state_dict, memory_limit_mb=1)
+
+    # Check that it still applied correctly despite low memory limit
+    for (source_k, source_v), (target_k, target_v) in zip(
+        source_model.state_dict().items(), target_model.state_dict().items()
+    ):
+        assert source_k == target_k
+        assert torch.allclose(source_v, target_v)
+
+
+if __name__ == "__main__":
+    pytest.main(["-xvs", __file__])

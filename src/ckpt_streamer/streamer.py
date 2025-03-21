@@ -126,7 +126,7 @@ def apply_state_dict(
 
     Args:
         model (torch.nn.Module): An instance of torch.nn.Module.
-        state_dict (dict[str, Any]): A checkpoint dictionary containing tensors.
+        state_dict (dict[str, Any]): A checkpoint dictionary containing tensors. Must be created by `torch.load(..., map_location='cpu', mmap=True), or causes SEGV`.
         converter (Callable[[torch.nn.Module, torch.nn.Module, torch.Tensor], torch.Tensor], optional): A function to convert tensors. Defaults to a no-op lambda function.
         strict (bool, optional): Whether to strictly enforce that the keys in state_dict match the keys returned by model.state_dict(). Defaults to True.
         assign (bool, optional): Whether to assign the tensor as a torch.nn.Parameter. Defaults to False.
@@ -145,28 +145,32 @@ def apply_state_dict(
         memory_limit_mb=memory_limit_mb,
         cpu_page_size=cpu_page_size,
     ):
-        try:
-            target_module, target_param_key, target_param = get_module_and_param(model, input_key)
-        except Exception as e:
-            unexpected_keys.append(input_key)
-            error_msgs.append(str(e))
-            continue
+        with torch.no_grad():
+            try:
+                target_module, target_param_key, target_param = get_module_and_param(model, input_key)
+            except Exception as e:
+                unexpected_keys.append(input_key)
+                continue
 
-        input_tensor = converter(model, target_module, input_tensor)
+            converted_tensor = converter(model, target_module, input_tensor)
+            if converted_tensor.data_ptr() == input_tensor.data_ptr():
+                # model must not have mmaped tensors
+                converted_tensor = input_tensor.clone()
+            input_tensor = converted_tensor
 
-        if assign:
-            if not isinstance(input_tensor, torch.nn.Parameter):
-                input_tensor = torch.nn.Parameter(
-                    input_tensor,
-                    requires_grad=target_param.requires_grad,
-                )
+            if assign:
+                if not isinstance(input_tensor, torch.nn.Parameter):
+                    input_tensor = torch.nn.Parameter(
+                        input_tensor,
+                        requires_grad=target_param.requires_grad,
+                    )
+                else:
+                    input_tensor.requires_grad_(target_param.requires_grad)
+                setattr(target_module, target_param_key, input_tensor)
             else:
-                input_tensor.requires_grad_(target_param.requires_grad)
-            setattr(target_module, target_param_key, input_tensor)
-        else:
-            target_param.copy_(input_tensor)
+                target_param.copy_(input_tensor)
 
-        missing_keys.remove(input_key)
+            missing_keys.remove(input_key)
 
     if strict:
         if len(unexpected_keys) > 0:
@@ -192,4 +196,4 @@ def apply_state_dict(
             )
         )
 
-    return _IncompatibleKeys(missing_keys, unexpected_keys)
+    return _IncompatibleKeys(list(missing_keys), unexpected_keys)

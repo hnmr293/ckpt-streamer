@@ -46,6 +46,8 @@ In this case, physical memory usage of `state_dict` will **not exceed 1GiB**.
 
 ## Interface
 
+### `stream()`: state_dict iterator
+
 ```python
 ckpt_streamer.stream(
     state_dict: Mapping[str, Any],
@@ -55,6 +57,11 @@ ckpt_streamer.stream(
 ```
 
 The core API is the function `stream`. It yields tuples of `(obj, key, val)`, where `val` is ALWAYS a `torch.Tensor`, `obj` is the parent container of `val`, and `key` is the key in `obj` such that `obj[key] == val`.
+
+Parameters:
+- `state_dict`: Your checkpoint dictionary. The `ckpt` file should be loaded with `mmap = True` and all tensors must be on the CPU.
+- `memory_limit_mb`: The maximum amount of tensor data allowed to remain in physical memory, measured in MiB. For example, if you set `memory_limit_mb = 1024` (1GiB), tensor data will be automatically purged from physical memory when total usage exceeds this 1GiB limit.
+- `cpu_page_size`: The system's memory page size in bytes. This should match your machine's actual page size (typically 4KiB = 4096 on most systems). Setting an incorrect value may cause OOM. You can verify your system's page size with `getconf PAGE_SIZE` on Linux/macOS.
 
 Typically, `obj` is a `dict[str, torch.Tensor]`, and `key` is a `str`.
 

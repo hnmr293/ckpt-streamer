@@ -78,6 +78,14 @@ def stream(
         Iterator[StreamValue]: Tuples of (parent, key, tensor), where `tensor` is always a torch.Tensor, `parent` is the container of `tensor`, and `key` is the key in `parent` such that `parent[key] == tensor`.
     """
 
+    memory_limit_mb = int(memory_limit_mb)
+    if memory_limit_mb <= 0:
+        raise ValueError("memory_limit_mb must be positive integer")
+
+    cpu_page_size = int(cpu_page_size)
+    if cpu_page_size <= 0:
+        raise ValueError("cpu_page_size must be positive integer")
+
     # sort tensors by their pointer
     all_tensors = sorted(_retrieve_all_tensors(obj, None, None), key=lambda x: x.ptr)
 
